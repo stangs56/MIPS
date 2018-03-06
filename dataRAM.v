@@ -14,7 +14,7 @@ module dataRAM #(
 )(
 	input  clk,
 	input  [BIT_WIDTH-1:0] data,
-	input  [5:0] addr,
+	input  [7:0] addr,
 	input  wren,
 	input  isSigned,
 	input  [1:0] dataSize,

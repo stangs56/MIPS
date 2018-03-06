@@ -169,24 +169,10 @@ module datapath_r0 #(
  **********/
  assign PC_out = PC; //replace
  assign clk_mem = clk;
+ assign clk_sys = clk;
 /**********
  * Components
  **********/
- 
- //clock stuff
- 
- //divide clock by 6
-	clk_div #(
-		.IN_FREQ(6),
-		.OUT_FREQ(1),
-		.ARCH_SEL(0)
-	)U_CLK_DIV(
-		.clk(clk),
-		.rst(rst_clk),
-		.new_clk(clk_sys)
-	);
-	
-	
 	//memory stuff
 	programMem U_PROGRAM_MEMORY(
 		.address(PC_out[7:2]),
@@ -197,7 +183,7 @@ module datapath_r0 #(
 	dataRAM U_DATA_MEMORY(
 		.clk(clk_mem),
 		.data(readData[1]),
-		.addr(ALUDataOut[7:2]), //convert to word addressing
+		.addr(ALUDataOut[7:0]), 
 		.wren(memWrite),
 		.isSigned(memIsSigned),
 		.dataSize(memDataSize),

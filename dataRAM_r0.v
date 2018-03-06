@@ -13,7 +13,7 @@ module dataRAM_r0 #(
 )(
 	input  clk,
 	input  [BIT_WIDTH-1:0] data,
-	input  [5:0] addr,
+	input  [7:0] addr,
 	input  wren,
 	input  isSigned,
 	input  [1:0] dataSize,
@@ -68,7 +68,7 @@ reg  [15:0] out_half;
  ram_r0 U_MEM_0 (
 	.clock(clk),
 	.data(data[7:0]),
-	.addr(addr),
+	.addr(addr[7:2]), //convert to word addressing
 	.wren( wren0 ),
 	.q(q0)
 	);
@@ -76,7 +76,7 @@ reg  [15:0] out_half;
  ram_r0 U_MEM_1 (
 	.clock(clk),
 	.data(data[15:8]),
-	.addr(addr),
+	.addr(addr[7:2]),
 	.wren( wren1 ),
 	.q(q1)
 	);
@@ -84,7 +84,7 @@ reg  [15:0] out_half;
  ram_r0 U_MEM_2 (
 	.clock(clk),
 	.data(data[23:16]),
-	.addr(addr),
+	.addr(addr[7:2]),
 	.wren( wren2 ),
 	.q(q2)
 	);
@@ -92,7 +92,7 @@ reg  [15:0] out_half;
  ram_r0 U_MEM_3 (
 	.clock(clk),
 	.data(data[31:24]),
-	.addr(addr),
+	.addr(addr[7:2]),
 	.wren( wren3 ),
 	.q(q3)
 	);
