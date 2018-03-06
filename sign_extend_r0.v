@@ -16,6 +16,7 @@ module sign_extend_r0 #(
 	input clk,
 	input rst,
 	input is_signed,
+	input load_upper,
 	input [BIT_WIDTH_IN*DEPTH-1:0] dataIn,
 	output [BIT_WIDTH_OUT*DEPTH-1:0] dataOut
 );
@@ -74,18 +75,24 @@ module sign_extend_r0 #(
 /**********
  * Output Combinatorial Logic
  **********/
- always @(tmp, is_signed) begin
+ always @(tmp, is_signed, load_upper) begin
  
 	for(i = 0; i < DEPTH; i = i + 1) begin
-		if(is_signed) begin
-			tmpOut[i][BIT_WIDTH_OUT-1:BIT_WIDTH_IN] <= 
-				{(BIT_WIDTH_OUT-BIT_WIDTH_IN){tmp[i][BIT_WIDTH_IN-1]}};
+		if(!load_upper) begin
+			if(is_signed) begin
+				tmpOut[i][BIT_WIDTH_OUT-1:BIT_WIDTH_IN] <= 
+					{(BIT_WIDTH_OUT-BIT_WIDTH_IN){tmp[i][BIT_WIDTH_IN-1]}};
+			end else begin
+				tmpOut[i][BIT_WIDTH_OUT-1:BIT_WIDTH_IN] <= 
+					{(BIT_WIDTH_OUT-BIT_WIDTH_IN){1'b0}};
+			end
+			
+			tmpOut[i][BIT_WIDTH_IN-1:0] <= tmp[i][BIT_WIDTH_IN-1:0];
 		end else begin
-			tmpOut[i][BIT_WIDTH_OUT-1:BIT_WIDTH_IN] <= 
-				{(BIT_WIDTH_OUT-BIT_WIDTH_IN){1'b0}};
+			tmpOut[i][BIT_WIDTH_OUT-1:BIT_WIDTH_IN] <= tmp[i][BIT_WIDTH_IN-1:0];
+			tmpOut[i][BIT_WIDTH_IN-1:0] <= 
+					{(BIT_WIDTH_OUT-BIT_WIDTH_IN){1'b0}};
 		end
-		
-		tmpOut[i][BIT_WIDTH_IN-1:0] <= tmp[i][BIT_WIDTH_IN-1:0];
 	end
  
  end

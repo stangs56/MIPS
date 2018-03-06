@@ -51,6 +51,7 @@ module datapath_r0 #(
 	wire regDest;
 	wire memToReg;
 	
+	wire load_upper;
 	wire isSigned;
 	wire ALUsrc;
 	
@@ -174,9 +175,9 @@ module datapath_r0 #(
  
  //clock stuff
  
- //divide clock by 4
+ //divide clock by 6
 	clk_div #(
-		.IN_FREQ(4),
+		.IN_FREQ(6),
 		.OUT_FREQ(1),
 		.ARCH_SEL(0)
 	)U_CLK_DIV(
@@ -224,8 +225,8 @@ module datapath_r0 #(
 	)U_PC_BRANCH_ADD(
 		.clk(clk_sys),
 		.rst(rst),
-		.inA(PC_plus4),
-		.inB({imm_extended[BIT_WIDTH-1:2], 2'b0}), //left shift by 2
+		.inA(PC_out),
+		.inB({imm_extended[BIT_WIDTH-3:0], 2'b0}), //left shift by 2
 		.out({PC_branchTmp_ovf, PC_branchTmp})
 	);
 	
@@ -318,7 +319,8 @@ module datapath_r0 #(
 		.regWrite(regWrite),
 	   .regDest(regDest),
 	   .memToReg(memToReg),
-	
+		
+		.load_upper(load_upper),
 	   .isSigned(isSigned),
 		.ALUsrc(ALUsrc),
 	
@@ -347,6 +349,7 @@ module datapath_r0 #(
 		.clk(clk_sys),
 		.rst(rst),
 		.is_signed(isSigned),
+		.load_upper(load_upper),
 		.dataIn(immediate),
 		.dataOut(imm_extended)
 	);

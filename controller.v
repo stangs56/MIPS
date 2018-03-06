@@ -23,6 +23,7 @@ module controller #(
 	output regDest,
 	output memToReg,
 	
+	output load_upper,
 	output isSigned,
 	output ALUsrc,
 	
@@ -68,7 +69,8 @@ module controller #(
 		.regWrite(regWrite),
 	   .regDest(regDest),
 	   .memToReg(memToReg),
-	
+		
+		.load_upper(load_upper),
 	   .isSigned(isSigned),
 		.ALUsrc(ALUsrc),
 	

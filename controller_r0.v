@@ -22,6 +22,7 @@ module controller_r0 #(
 	output reg regDest,
 	output reg memToReg,
 	
+	output reg load_upper,
 	output reg isSigned,
 	output reg ALUsrc,
 	
@@ -54,6 +55,7 @@ module controller_r0 #(
  regDest     <= 1'b0;
  memToReg    <= 1'b0;
  
+ load_upper  <= 1'b0;
  isSigned    <= 1'b0;
  ALUsrc      <= 1'b0;
  
@@ -90,7 +92,10 @@ module controller_r0 #(
 			6'h0C : ALUop <= 6'h24;
 			6'h0D : ALUop <= 6'h25;
 			6'h0E : ALUop <= 6'h26;
-			6'h0F : ALUop <= 6'h20; //lui
+			6'h0F : begin //lui
+				ALUop      <= 6'h20; 
+				load_upper <= 1'b1;
+			end
 		endcase
 		
 	end

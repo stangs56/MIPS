@@ -17,6 +17,7 @@ module sign_extend #(
 	input clk,
 	input rst,
 	input is_signed,
+	input load_upper,
 	input [BIT_WIDTH_IN*DEPTH-1:0] dataIn,
 	output [BIT_WIDTH_OUT*DEPTH-1:0] dataOut
 );
@@ -45,6 +46,7 @@ module sign_extend #(
 		.clk(clk),
 		.rst(rst),
 		.is_signed(is_signed),
+		.load_upper(load_upper),
 		.dataIn(dataIn),
 		.dataOut(dataOut)
 	);
