@@ -173,26 +173,12 @@ module datapath_r0 #(
 /**********
  * Components
  **********/
-	//memory stuff
-	programMem U_PROGRAM_MEMORY(
-		.address(PC_out[7:2]),
-		.clock(clk_mem),
-		.q(instruction)
-	);
-	
-	dataRAM U_DATA_MEMORY(
-		.clk(clk_mem),
-		.data(readData[1]),
-		.addr(ALUDataOut[7:0]), 
-		.wren(memWrite),
-		.isSigned(memIsSigned),
-		.dataSize(memDataSize),
-		.q(dataMemOut)
-	);
-	
  
- //PC stuff
-  	adder #(
+ /**********
+ * Fetch
+ **********/
+ 
+   adder #(
 		.BIT_WIDTH(BIT_WIDTH),
 		.DELAY(DELAY),
 		.ARCH_SEL(0)
@@ -203,7 +189,102 @@ module datapath_r0 #(
 		.inB(4),
 		.out({PC_plus4_ovf, PC_plus4})
 	);
+ 
+ programMem U_PROGRAM_MEMORY(
+		.address(PC_out[7:2]),
+		.clock(clk_mem),
+		.q(instruction)
+	);
+ 
+ /**********
+ * IF/ID
+ **********/
+ 
+ /**********
+ * Decode
+ **********/
+ 
+  //controller stuff
+  	controller #(
+		.OP_WIDTH(OP_WIDTH),
+		.ALUOP_WIDTH(ALUOP_WIDTH),
+		.DELAY(DELAY),
+		.ARCH_SEL(0)
+	)U_CONTROLLER(
+		.clk(clk_sys),
+		.rst(rst),
+		.opcode(opcode),
+		.ALUop(ALUop),
+		.regWrite(regWrite),
+	   .regDest(regDest),
+	   .memToReg(memToReg),
+		
+		.load_upper(load_upper),
+	   .isSigned(isSigned),
+		.ALUsrc(ALUsrc),
 	
+		.jump(jump),
+		.jal(jal),
+		.branch(branch),
+		.eq(eq),
+	
+		.memRead(memRead),
+		.memWrite(memWrite),
+		
+		.memIsSigned(memIsSigned),
+		.memDataSize(memDataSize),
+		
+		.combined(combined)
+	);
+ 
+  //register file stuff
+	 registerFile #(
+	  .DATA_WIDTH(BIT_WIDTH),
+	  .RD_DEPTH(2),
+	  .REG_DEPTH(32),
+	  .ARCH_SEL(0)
+	)U_REGFILE(
+	  .clk(~clk_sys),
+	  .rst(rst),
+	  .jal(jal),
+	  .wr(regWrite),
+	  .rr(rr_tmp),
+	  .rw(regToWrite),
+	  .d(regWriteData),
+	  .q(q_tmp)
+	);
+	
+	mux #(
+	  .BIT_WIDTH(REG_ADDR_WIDTH),
+	  .DEPTH(2),
+	  .ARCH_SEL(0)
+	)U_REG_DEST_MUX(
+	  .clk(clk_sys),
+	  .rst(rst),
+	  .en_n(1'b0),
+	  .dataIn({rd, rt}),
+	  .sel(regDest),
+	  .dataOut(regToWrite)
+	);
+	
+	//sign extender stuff
+	 sign_extend #(
+		.BIT_WIDTH_IN(IMM_WIDTH),
+		.BIT_WIDTH_OUT(BIT_WIDTH),
+		.DEPTH(1),
+		.DELAY(DELAY),
+		.ARCH_SEL(0)
+	)U_SIGN_EXTEND(
+		.clk(clk_sys),
+		.rst(rst),
+		.is_signed(isSigned),
+		.load_upper(load_upper),
+		.dataIn(immediate),
+		.dataOut(imm_extended)
+	);
+	
+	
+	//branch address calculation
 	adder #(
 		.BIT_WIDTH(BIT_WIDTH),
 		.DELAY(DELAY),
@@ -247,35 +328,7 @@ module datapath_r0 #(
 	);
  
  
- //register file stuff
-	 registerFile #(
-	  .DATA_WIDTH(BIT_WIDTH),
-	  .RD_DEPTH(2),
-	  .REG_DEPTH(32),
-	  .ARCH_SEL(0)
-	)U_REGFILE(
-	  .clk(~clk_sys),
-	  .rst(rst),
-	  .jal(jal),
-	  .wr(regWrite),
-	  .rr(rr_tmp),
-	  .rw(regToWrite),
-	  .d(regWriteData),
-	  .q(q_tmp)
-	);
-	
-	mux #(
-	  .BIT_WIDTH(REG_ADDR_WIDTH),
-	  .DEPTH(2),
-	  .ARCH_SEL(0)
-	)U_REG_DEST_MUX(
-	  .clk(clk_sys),
-	  .rst(rst),
-	  .en_n(1'b0),
-	  .dataIn({rd, rt}),
-	  .sel(regDest),
-	  .dataOut(regToWrite)
-	);
+
 	
 	//for jal
 	mux #(
@@ -290,57 +343,17 @@ module datapath_r0 #(
 	  .sel(jal),
 	  .dataOut(regWriteData)
 	);
-
-	//controller stuff
-  	controller #(
-		.OP_WIDTH(OP_WIDTH),
-		.ALUOP_WIDTH(ALUOP_WIDTH),
-		.DELAY(DELAY),
-		.ARCH_SEL(0)
-	)U_CONTROLLER(
-		.clk(clk_sys),
-		.rst(rst),
-		.opcode(opcode),
-		.ALUop(ALUop),
-		.regWrite(regWrite),
-	   .regDest(regDest),
-	   .memToReg(memToReg),
-		
-		.load_upper(load_upper),
-	   .isSigned(isSigned),
-		.ALUsrc(ALUsrc),
-	
-		.jump(jump),
-		.jal(jal),
-		.branch(branch),
-		.eq(eq),
-	
-		.memRead(memRead),
-		.memWrite(memWrite),
-		
-		.memIsSigned(memIsSigned),
-		.memDataSize(memDataSize),
-		
-		.combined(combined)
-	);
-	
-	//sign extender stuff
-	 sign_extend #(
-		.BIT_WIDTH_IN(IMM_WIDTH),
-		.BIT_WIDTH_OUT(BIT_WIDTH),
-		.DEPTH(1),
-		.DELAY(DELAY),
-		.ARCH_SEL(0)
-	)U_SIGN_EXTEND(
-		.clk(clk_sys),
-		.rst(rst),
-		.is_signed(isSigned),
-		.load_upper(load_upper),
-		.dataIn(immediate),
-		.dataOut(imm_extended)
-	);
-	
-	//ALU stuff
+ 
+ 
+ /**********
+ * ID/EX
+ **********/
+ 
+ /**********
+ * Execute
+ **********/
+ 
+ //ALU stuff
 	
 	 ALU_controller #(
 		.FUNCT_WIDTH(FUNCT_WIDTH),
@@ -386,9 +399,34 @@ module datapath_r0 #(
 		.dataOut(ALUDataOut),
 		.status(status)
 	);
-	
-	//Writeback
-	mux #(
+ 
+ /**********
+ * EX/MEM
+ **********/
+ 
+ /**********
+ * Memory
+ **********/
+ 
+ 	dataRAM U_DATA_MEMORY(
+		.clk(clk_mem),
+		.data(readData[1]),
+		.addr(ALUDataOut[7:0]), 
+		.wren(memWrite),
+		.isSigned(memIsSigned),
+		.dataSize(memDataSize),
+		.q(dataMemOut)
+	);
+ 
+ /**********
+ * MEM/WB
+ **********/
+ 
+ /**********
+ * Write Back
+ **********/
+ 
+ 	mux #(
 	  .BIT_WIDTH(BIT_WIDTH),
 	  .DEPTH(2),
 	  .ARCH_SEL(0)
@@ -400,6 +438,7 @@ module datapath_r0 #(
 	  .sel(memToReg),
 	  .dataOut(wbOut)
 	);
+
  
 /**********
  * Output Combinatorial Logic
