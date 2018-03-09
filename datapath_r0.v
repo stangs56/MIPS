@@ -243,7 +243,7 @@ module datapath_r0 #(
 
  //address has register (uses that instead of normal PC)
  programMem U_PROGRAM_MEMORY(
-		.address(PC_in[7:2]),
+		.address(PC_out[7:2]),
 		.clock(clk_mem),
 		.q(id_instruction) //output has register
 	);

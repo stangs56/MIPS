@@ -24,7 +24,7 @@ output [STATUS_WIDTH-1:0] status //CZSV
 );
 
 	/**********
-	 *  Array Packing Defines 
+	 *  Array Packing Defines
 	 **********/
 //These are preprocessor defines similar to C/C++ preprocessor or VHDL functions
 	`define PACK_ARRAY(PK_WIDTH,PK_DEPTH,PK_SRC,PK_DEST, BLOCK_ID, GEN_VAR)    genvar GEN_VAR; generate for (GEN_VAR=0; GEN_VAR<(PK_DEPTH); GEN_VAR=GEN_VAR+1) begin: BLOCK_ID assign PK_DEST[((PK_WIDTH)*GEN_VAR+((PK_WIDTH)-1)):((PK_WIDTH)*GEN_VAR)] = PK_SRC[GEN_VAR][((PK_WIDTH)-1):0]; end endgenerate
@@ -46,70 +46,70 @@ wire [DATA_WIDTH - 1:0] tmp_neg;
 reg  [DATA_WIDTH - 1:0] hi, lo;
 
 /**********
- * Glue Logic 
+ * Glue Logic
  **********/
- 
+
   `UNPACK_ARRAY(DATA_WIDTH,2,tmp_in,dataIn, U_BLK_0, idx_0)
-  
+
   //shift logical left
   assign tmp_calc[6'h0] = tmp_in[0] << shamt;
-  
+
   //shift logical right
   assign tmp_calc[6'h2] = tmp_in[0] >> shamt;
-  
+
   //shift arithmetic right
   assign tmp_calc[6'h3] = tmp_in[0] >>> shamt;
-  
+
   //shift logical left
   assign tmp_calc[6'h4] = tmp_in[0] << tmp_in[1];
-  
+
   //shift logical right
   assign tmp_calc[6'h5] = tmp_in[0] >> tmp_in[1];
-  
+
   //shift arithmetic right
   assign tmp_calc[6'h7] = tmp_in[0] >>> tmp_in[1];
-  
+
   //jump register
   assign tmp_calc[6'h8] = tmp_in[0];
-  
+
   //from hi
   assign tmp_calc[6'h10] = hi;
-  
+
   //from lo
   assign tmp_calc[6'h12] = lo;
-  
+
   //add
   assign tmp_calc[6'h20] = tmp_addout[DATA_WIDTH-1:0];
-  
+
   //addu
   assign tmp_calc[6'h21] = tmp_addout[DATA_WIDTH-1:0];
-  
+
   //sub
   assign tmp_calc[6'h22] = tmp_subout[DATA_WIDTH-1:0];
-  
+
   //subu
   assign tmp_calc[6'h23] = tmp_subout[DATA_WIDTH-1:0];
-  
+
   //and
   assign tmp_calc[6'h24] = tmp_in[0] & tmp_in[1];
-  
+
   //or
   assign tmp_calc[6'h25] = tmp_in[0] | tmp_in[1];
-  
+
   //xor
   assign tmp_calc[6'h26] = tmp_in[0] ^ tmp_in[1];
-  
+
   //nor
   assign tmp_calc[6'h27] = ~(tmp_in[0] | tmp_in[1]);
-  
+
   //set on less than
   assign tmp_calc[6'h2A] = ($signed(tmp_in[0]) < $signed(tmp_in[1]));
-  
+
   //set on less than unsigned
   assign tmp_calc[6'h2B] = (tmp_in[0] < tmp_in[1]);
-  
-  
- 
+
+
+
 /**********
  * Synchronous Logic
  **********/
@@ -128,22 +128,22 @@ reg  [DATA_WIDTH - 1:0] hi, lo;
 		end
 	end
  end
- 
+
 /**********
- * Glue Logic 
+ * Glue Logic
  **********/
- 
+
  assign tmp_out = tmp_calc[ctrl];
- 
+
  assign tmp_neg = ~tmp_in[1] + 1'b1;
- 
+
 /**********
  * Components
  **********/
- 
+
   	adder #(
 		.BIT_WIDTH(DATA_WIDTH),
-		.DELAY(DELAY),
+		.DELAY(0),
 		.ARCH_SEL(0)
 	)U_ADD(
 		.clk(clk),
@@ -152,10 +152,10 @@ reg  [DATA_WIDTH - 1:0] hi, lo;
 		.inB(tmp_in[1]),
 		.out(tmp_addout)
 	);
-	
+
 	adder #(
 		.BIT_WIDTH(DATA_WIDTH),
-		.DELAY(DELAY),
+		.DELAY(0),
 		.ARCH_SEL(0)
 	)U_SUB(
 		.clk(clk),
@@ -164,10 +164,10 @@ reg  [DATA_WIDTH - 1:0] hi, lo;
 		.inB(tmp_neg),
 		.out(tmp_subout)
 	);
-	
+
 	mult #(
 		.BIT_WIDTH(DATA_WIDTH),
-		.DELAY(DELAY),
+		.DELAY(0),
 		.ARCH_SEL(0)
 	)U_MULT(
 		.clk(clk),
@@ -176,7 +176,7 @@ reg  [DATA_WIDTH - 1:0] hi, lo;
 		.inB(tmp_in[1]),
 		.out(tmp_multout)
 	);
- 
+
  	delay #(
 		.BIT_WIDTH(DATA_WIDTH),
 		.DEPTH(1),
@@ -188,7 +188,7 @@ reg  [DATA_WIDTH - 1:0] hi, lo;
 		.dataIn(tmp_out),
 		.dataOut(dataOut)
 	);
- 
+
 /**********
  * Output Combinatorial Logic
  **********/
@@ -196,16 +196,16 @@ reg  [DATA_WIDTH - 1:0] hi, lo;
  //CZSV
  //c flag
  assign status[3] = tmp_addout[DATA_WIDTH];
- 
+
  //z flag
  assign status[2] = ~(|dataOut);
- 
+
  //S flag
  assign status[1] = dataOut[DATA_WIDTH-1];
- 
+
  //V flag
- assign status[0] = 
+ assign status[0] =
 	tmp_in[0][DATA_WIDTH-1]&&tmp_in[1][DATA_WIDTH-1]&&(!dataOut[DATA_WIDTH-1]) ||
 	(!tmp_in[0][DATA_WIDTH-1])&&(!tmp_in[1][DATA_WIDTH-1])&&dataOut[DATA_WIDTH-1];
- 
+
 endmodule
