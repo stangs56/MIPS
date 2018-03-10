@@ -90,8 +90,9 @@ module datapath_r0 #(
  * Decode
  **********/
 
- //Branch
 
+ wire [ADDR_WIDTH-1:0] id_PC_out;
+ //Branch
   wire [ADDR_WIDTH-1:0] PC_branchTmp;
 
   wire [ADDR_WIDTH-1:0] PC_branchMux;
@@ -216,6 +217,37 @@ module datapath_r0 #(
  * Fetch
  **********/
 
+ mux #(
+	 .BIT_WIDTH(BIT_WIDTH),
+	 .DEPTH(2),
+	 .ARCH_SEL(0)
+ )U_PC_BRANCH_MUX(
+	 .clk(clk_sys),
+	 .rst(rst),
+	 .en_n(1'b0),
+	 .dataIn({PC_branchTmp, PC_plus4}),
+	 .sel(branchTaken),
+	 .dataOut(PC_branchMux)
+ );
+
+ //picks between branch and jumps
+ mux #(
+	 .BIT_WIDTH(BIT_WIDTH),
+	 .DEPTH(4),
+	 .ARCH_SEL(0)
+ )U_PC_JUMP_MUX(
+	 .clk(clk_sys),
+	 .rst(rst),
+	 .en_n(1'b0),
+	 .dataIn({
+		 {id_PC_out[31:28], id_jConst, 2'b0},
+		 {id_PC_out[31:28], id_jConst, 2'b0},
+		 mem_ALUDataOut, //needs to be from registers
+		 PC_branchMux}),
+	 .sel({jump || jal, jr}),
+	 .dataOut(PC_in)
+ );
+
  	delay #(
 		.BIT_WIDTH(BIT_WIDTH),
 		.DEPTH(1),
@@ -251,6 +283,19 @@ module datapath_r0 #(
  /**********
  * IF/ID
  **********/
+
+ delay #(
+	 .BIT_WIDTH(ADDR_WIDTH),
+	 .DEPTH(1),
+	 .DELAY(1),
+	 .ARCH_SEL(0)
+ )U_IF_ID_PC_DELAY(
+	 .clk(clk),
+	 .rst(rst),
+	 .en_n(1'b0),
+	 .dataIn(PC_out),
+	 .dataOut(id_PC_out)
+ );
 
  /**********
  * Decode
@@ -335,7 +380,6 @@ module datapath_r0 #(
 		.dataOut(id_imm_extended)
 	);
 
-
 	//branch address calculation
 	adder #(
 		.BIT_WIDTH(BIT_WIDTH),
@@ -344,43 +388,10 @@ module datapath_r0 #(
 	)U_PC_BRANCH_ADD(
 		.clk(clk_sys),
 		.rst(rst),
-		.inA(PC_out),
+		.inA(id_PC_out),
 		.inB({id_imm_extended[BIT_WIDTH-3:0], 2'b0}), //left shift by 2
 		.out({PC_branchTmp_ovf, PC_branchTmp})
 	);
-
-	mux #(
-	  .BIT_WIDTH(BIT_WIDTH),
-	  .DEPTH(2),
-	  .ARCH_SEL(0)
-	)U_PC_BRANCH_MUX(
-	  .clk(clk_sys),
-	  .rst(rst),
-	  .en_n(1'b0),
-	  .dataIn({PC_branchTmp, PC_plus4}),
-	  .sel(branchTaken),
-	  .dataOut(PC_branchMux)
-	);
-
-	//picks between branch and jumps
-	mux #(
-	  .BIT_WIDTH(BIT_WIDTH),
-	  .DEPTH(4),
-	  .ARCH_SEL(0)
-	)U_PC_JUMP_MUX(
-	  .clk(clk_sys),
-	  .rst(rst),
-	  .en_n(1'b0),
-	  .dataIn({
-			{PC_out[31:28], id_jConst, 2'b0},
-			{PC_out[31:28], id_jConst, 2'b0},
-			mem_ALUDataOut, PC_branchMux}), //change
-	  .sel({jump || jal, jr}),
-	  .dataOut(PC_in)
-	);
-
-
-
 
 	//for jal
 	mux #(
