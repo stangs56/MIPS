@@ -52,22 +52,22 @@ reg  [DATA_WIDTH - 1:0] hi, lo;
   `UNPACK_ARRAY(DATA_WIDTH,2,tmp_in,dataIn, U_BLK_0, idx_0)
 
   //shift logical left
-  assign tmp_calc[6'h0] = tmp_in[0] << shamt;
+  assign tmp_calc[6'h0] = tmp_in[1] << shamt;
 
   //shift logical right
-  assign tmp_calc[6'h2] = tmp_in[0] >> shamt;
+  assign tmp_calc[6'h2] = tmp_in[1] >> shamt;
 
   //shift arithmetic right
-  assign tmp_calc[6'h3] = tmp_in[0] >>> shamt;
+  assign tmp_calc[6'h3] = tmp_in[1] >>> shamt;
 
   //shift logical left
-  assign tmp_calc[6'h4] = tmp_in[0] << tmp_in[1];
+  assign tmp_calc[6'h4] = tmp_in[1] << tmp_in[0];
 
   //shift logical right
-  assign tmp_calc[6'h5] = tmp_in[0] >> tmp_in[1];
+  assign tmp_calc[6'h5] = tmp_in[1] >> tmp_in[0];
 
   //shift arithmetic right
-  assign tmp_calc[6'h7] = tmp_in[0] >>> tmp_in[1];
+  assign tmp_calc[6'h7] = tmp_in[1] >>> tmp_in[0];
 
   //jump register
   assign tmp_calc[6'h8] = tmp_in[0];
