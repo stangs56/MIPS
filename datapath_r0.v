@@ -132,6 +132,9 @@ wire [1:0] df_forwardA, df_forwardB;
 /**********
  * Execute
  **********/
+	//Data forwarding
+	wire [BIT_WIDTH-1:0] ex_alu_in_df;
+
 	//registers
 	wire [BIT_WIDTH-1:0] ex_readData [1:0];
 	wire [REG_ADDR_WIDTH-1:0] ex_regToWrite;
@@ -196,7 +199,6 @@ wire [1:0] df_forwardA, df_forwardB;
  assign branchTaken = (eq && branch && id_reg_eq) || (!eq && branch && !id_reg_eq);
 
  //renaming
- assign ex_ALUDataIn[0] = ex_readData[0];
  assign mem_C = mem_status[3];
  assign mem_Z = mem_status[2];
  assign mem_S = mem_status[1];
@@ -521,6 +523,32 @@ wire [1:0] df_forwardA, df_forwardB;
 	);
 
 	mux #(
+		.BIT_WIDTH(BIT_WIDTH),
+		.DEPTH(3),
+		.ARCH_SEL(0)
+	)U_ALU_IN1_DF_MUX(
+		.clk(clk_sys),
+		.rst(rst),
+		.en_n(1'b0),
+		.dataIn({wb_out, mem_ALUDataOut, ex_readData[0]}),
+		.sel(df_forwardA),
+		.dataOut(ex_ALUDataIn[0])
+	);
+
+	mux #(
+		.BIT_WIDTH(BIT_WIDTH),
+		.DEPTH(3),
+		.ARCH_SEL(0)
+	)U_ALU_IN2_DF_MUX(
+		.clk(clk_sys),
+		.rst(rst),
+		.en_n(1'b0),
+		.dataIn({wb_out, mem_ALUDataOut, ex_readData[1]}),
+		.sel(df_forwardB),
+		.dataOut(ex_alu_in_df)
+	);
+
+	mux #(
 	  .BIT_WIDTH(BIT_WIDTH),
 	  .DEPTH(2),
 	  .ARCH_SEL(0)
@@ -528,7 +556,7 @@ wire [1:0] df_forwardA, df_forwardB;
 	  .clk(clk_sys),
 	  .rst(rst),
 	  .en_n(1'b0),
-	  .dataIn({ex_imm_extended, ex_readData[1]}),
+	  .dataIn({ex_imm_extended, ex_alu_in_df}),
 	  .sel(ex_ALUsrc),
 	  .dataOut(ex_ALUDataIn[1])
 	);
