@@ -75,6 +75,11 @@ module datapath_r0 #(
 	//control signals created in datapath
 	wire branchTaken;
 
+	/**********
+	 * Data Forwarding
+	 **********/
+
+wire [1:0] df_forwardA, df_forwardB;
 
 /**********
  * Fetch
@@ -85,6 +90,9 @@ module datapath_r0 #(
 	wire [ADDR_WIDTH-1:0] PC_in;
 	wire [ADDR_WIDTH-1:0] PC_plus4;
 	wire PC_plus4_ovf;
+
+	//program memory
+	wire [5:0] progMemIn;
 
 /**********
  * Decode
@@ -126,6 +134,8 @@ module datapath_r0 #(
  **********/
 	//registers
 	wire [BIT_WIDTH-1:0] ex_readData [1:0];
+	wire [REG_ADDR_WIDTH-1:0] ex_regToWrite;
+	wire [REG_ADDR_WIDTH-1:0] ex_rs, ex_rt
 
   //control
   wire [FUNCT_WIDTH-1:0] ex_funct;
@@ -144,6 +154,8 @@ module datapath_r0 #(
 /**********
  * Memory
  **********/
+
+ wire [REG_ADDR_WIDTH-1:0] mem_regToWrite;
  //control
  wire mem_memWrite;
  wire mem_memIsSigned;
@@ -212,6 +224,29 @@ module datapath_r0 #(
 /**********
  * Components
  **********/
+ /**********
+  * Data Fowarding
+  **********/
+ data_forwarding_unit_r0 #(
+	 .BIT_WIDTH(BIT_WIDTH),
+	 .REG_ADDR_WIDTH(REG_ADDR_WIDTH),
+	 .DELAY(0)
+ )U_DATA_FORWARDING_UNIT(
+	 .clk(clk),
+	 .rst(rst),
+
+	 .rs(ex_rs),
+	 .rt(ex_rt),
+
+	 .mem_writeReg(mem_writeReg),
+	 .mem_regToWrite(mem_regToWrite),
+
+	 .wb_writeReg(wb_writeReg),
+	 .wb_regToWrite(wb_regToWrite),
+
+	 .forwardA(df_forwardA),
+	 .forwardB(df_forwardB)
+ );
 
  /**********
  * Fetch
@@ -273,9 +308,22 @@ module datapath_r0 #(
 		.out({PC_plus4_ovf, PC_plus4})
 	);
 
+	mux #(
+ 	 .BIT_WIDTH(6),
+ 	 .DEPTH(2),
+ 	 .ARCH_SEL(0)
+  )U_PROG_MEM_FORCE_RST(
+ 	 .clk(clk_sys),
+ 	 .rst(rst),
+ 	 .en_n(1'b0),
+ 	 .dataIn({6'b0, PC_in[7:2]}),
+ 	 .sel(rst),
+ 	 .dataOut(progMemIn)
+  );
+
  //address has register (uses that instead of normal PC)
  programMem U_PROGRAM_MEMORY(
-		.address(PC_out[7:2]),
+		.address(progMemIn),
 		.clock(clk_mem),
 		.q(id_instruction) //output has register
 	);
@@ -388,7 +436,7 @@ module datapath_r0 #(
 	)U_PC_BRANCH_ADD(
 		.clk(clk_sys),
 		.rst(rst),
-		.inA(id_PC_out),
+		.inA(PC_out),
 		.inB({id_imm_extended[BIT_WIDTH-3:0], 2'b0}), //left shift by 2
 		.out({PC_branchTmp_ovf, PC_branchTmp})
 	);
@@ -423,6 +471,19 @@ module datapath_r0 #(
 	 .en_n(1'b0),
 	 .dataIn({id_funct, id_shamt, ALUop, ALUsrc}),
 	 .dataOut({ex_funct, ex_shamt, ex_ALUop, ex_ALUsrc})
+ );
+
+ delay #(
+ .BIT_WIDTH(REG_ADDR_WIDTH),
+ .DEPTH(3),
+ .DELAY(1),
+ .ARCH_SEL(0)
+ )U_ID_EX_REGWRITE_DELAY(
+ .clk(clk),
+ .rst(rst),
+ .en_n(1'b0),
+ .dataIn({id_regToWrite, id_rs, id_rt}),
+ .dataOut({ex_regToWrite, ex_rs, ex_rt})
  );
 
  delay #(
@@ -507,6 +568,19 @@ module datapath_r0 #(
  );
 
  delay #(
+ .BIT_WIDTH(REG_ADDR_WIDTH),
+ .DEPTH(1),
+ .DELAY(1),
+ .ARCH_SEL(0)
+ )U_EX_MEM_REGWRITE_DELAY(
+ .clk(clk),
+ .rst(rst),
+ .en_n(1'b0),
+ .dataIn(ex_regToWrite),
+ .dataOut(mem_regToWrite)
+ );
+
+ delay #(
 	.BIT_WIDTH(4),
 	.DEPTH(1),
 	.DELAY(2),
@@ -524,7 +598,7 @@ module datapath_r0 #(
  **********/
 
  	dataRAM U_DATA_MEMORY(
-		.clk(clk_mem),
+		.clk(~clk_mem),
 		.data(mem_regData),
 		.addr(mem_ALUDataOut[7:0]),
 		.wren(mem_memWrite),
@@ -551,7 +625,20 @@ module datapath_r0 #(
  );
 
  delay #(
- .BIT_WIDTH(REG_ADDR_WIDTH + 2),
+ .BIT_WIDTH(REG_ADDR_WIDTH),
+ .DEPTH(1),
+ .DELAY(1),
+ .ARCH_SEL(0)
+ )U_MEM_WB_REGWRITE_DELAY(
+ .clk(clk),
+ .rst(rst),
+ .en_n(1'b0),
+ .dataIn(mem_regToWrite),
+ .dataOut(wb_regToWrite)
+ );
+
+ delay #(
+ .BIT_WIDTH(2),
  .DEPTH(1),
  .DELAY(3),
  .ARCH_SEL(0)
@@ -559,8 +646,8 @@ module datapath_r0 #(
  .clk(clk),
  .rst(rst),
  .en_n(1'b0),
- .dataIn({memToReg, regWrite, id_regToWrite}),
- .dataOut({wb_memToReg, wb_regWrite, wb_regToWrite})
+ .dataIn({memToReg, regWrite}),
+ .dataOut({wb_memToReg, wb_regWrite})
  );
 
  /**********

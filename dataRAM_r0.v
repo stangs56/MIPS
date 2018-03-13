@@ -40,19 +40,19 @@ reg  [15:0] out_half;
 
 
 
- assign wren3 = wren && (dataSize[1] ||
+ assign wren0 = wren && (dataSize[1] ||
 					(dataSize == 2'b01) && addr[1] ||
 					addr[1:0] == 2'b11);
 
- assign wren2 = wren && (dataSize[1] ||
+ assign wren1 = wren && (dataSize[1] ||
 					(dataSize == 2'b01) && addr[1] ||
 					addr[1:0] == 2'b10);
 
- assign wren1 = wren && (dataSize[1] ||
+ assign wren2 = wren && (dataSize[1] ||
 					(dataSize == 2'b01) && !addr[1] ||
 					addr[1:0] == 2'b01);
 
- assign wren0 = wren && (dataSize[1] ||
+ assign wren3 = wren && (dataSize[1] ||
 					(dataSize == 2'b01) && !addr[1] ||
 					addr[1:0] == 2'b00);
 
