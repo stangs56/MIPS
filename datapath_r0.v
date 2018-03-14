@@ -154,11 +154,15 @@ wire [1:0] df_forwardA, df_forwardB;
 	//sign extender
 	wire [BIT_WIDTH-1:0] ex_imm_extended;
 
+	wire ex_jr;
+
 /**********
  * Memory
  **********/
 
+ wire mem_regWrite;
  wire [REG_ADDR_WIDTH-1:0] mem_regToWrite;
+
  //control
  wire mem_memWrite;
  wire mem_memIsSigned;
@@ -173,7 +177,9 @@ wire [1:0] df_forwardA, df_forwardB;
 /**********
  * writeback
  **********/
+	wire wb_jal;
 
+	wire [BIT_WIDTH-1:0] wb_PC_plus4;
 	wire [BIT_WIDTH-1:0] wb_dataMemOut;
 	wire [BIT_WIDTH-1:0] wb_out;
 	wire [BIT_WIDTH-1:0] wb_ALUDataOut;
@@ -183,6 +189,9 @@ wire [1:0] df_forwardA, df_forwardB;
 /**********
  * Glue Logic
  **********/
+
+ //jr
+ assign jr = (id_funct == 6'h08) && (id_opcode == 6'h00);
 
  //instruction splitting
  assign id_opcode = id_instruction[31:26];
@@ -195,7 +204,7 @@ wire [1:0] df_forwardA, df_forwardB;
  assign id_jConst    = id_instruction[25:0];
 
  //branching
- assign id_reg_eq = id_readData[0] == id_readData[1];
+ assign id_reg_eq = (id_readData[0] == id_readData[1]);
  assign branchTaken = (eq && branch && id_reg_eq) || (!eq && branch && !id_reg_eq);
 
  //renaming
@@ -240,10 +249,10 @@ wire [1:0] df_forwardA, df_forwardB;
 	 .rs(ex_rs),
 	 .rt(ex_rt),
 
-	 .mem_writeReg(mem_writeReg),
+	 .mem_writeReg(mem_regWrite),
 	 .mem_regToWrite(mem_regToWrite),
 
-	 .wb_writeReg(wb_writeReg),
+	 .wb_writeReg(wb_regWrite),
 	 .wb_regToWrite(wb_regToWrite),
 
 	 .forwardA(df_forwardA),
@@ -279,7 +288,7 @@ wire [1:0] df_forwardA, df_forwardB;
 	 .dataIn({
 		 {id_PC_out[31:28], id_jConst, 2'b0},
 		 {id_PC_out[31:28], id_jConst, 2'b0},
-		 mem_ALUDataOut, //needs to be from registers
+		 id_readData[0], //should be rs
 		 PC_branchMux}),
 	 .sel({jump || jal, jr}),
 	 .dataOut(PC_in)
@@ -323,16 +332,46 @@ wire [1:0] df_forwardA, df_forwardB;
  	 .dataOut(progMemIn)
   );
 
+	wire [BIT_WIDTH-1:0] progMemOut;
+
  //address has register (uses that instead of normal PC)
  programMem U_PROGRAM_MEMORY(
 		.address(progMemIn),
 		.clock(clk_mem),
-		.q(id_instruction) //output has register
+		.q(progMemOut) //output has register
 	);
 
  /**********
  * IF/ID
  **********/
+
+ wire IDFlush;
+
+ delay #(
+	 .BIT_WIDTH(1),
+	 .DEPTH(1),
+	 .DELAY(1),
+	 .ARCH_SEL(0)
+ )U_INSTRUCTION_FORCE_RST_TGL(
+	 .clk(clk),
+	 .rst(rst),
+	 .en_n(1'b0),
+	 .dataIn(jump || jal || branch || jr),
+	 .dataOut(IDFlush)
+ );
+
+ mux #(
+	.BIT_WIDTH(BIT_WIDTH),
+	.DEPTH(2),
+	.ARCH_SEL(0)
+ )U_INSTRUCTION_FORCE_RST(
+	.clk(clk_sys),
+	.rst(rst),
+	.en_n(1'b0),
+	.dataIn({{BIT_WIDTH{1'b0}}, progMemOut}),
+	.sel(IDFlush),
+	.dataOut(id_instruction)
+ );
 
  delay #(
 	 .BIT_WIDTH(ADDR_WIDTH),
@@ -391,9 +430,9 @@ wire [1:0] df_forwardA, df_forwardB;
 	  .REG_DEPTH(32),
 	  .ARCH_SEL(0)
 	)U_REGFILE(
-	  .clk(clk_sys),
+	  .clk(~clk_sys),
 	  .rst(rst),
-	  .jal(jal),
+	  .jal(wb_jal),
 	  .wr(wb_regWrite),
 	  .rr(id_rr_tmp),
 	  .rw(wb_regToWrite),
@@ -419,7 +458,7 @@ wire [1:0] df_forwardA, df_forwardB;
 		.BIT_WIDTH_IN(IMM_WIDTH),
 		.BIT_WIDTH_OUT(BIT_WIDTH),
 		.DEPTH(1),
-		.DELAY(DELAY),
+		.DELAY(0),
 		.ARCH_SEL(0)
 	)U_SIGN_EXTEND(
 		.clk(clk_sys),
@@ -452,8 +491,8 @@ wire [1:0] df_forwardA, df_forwardB;
 	  .clk(clk_sys),
 	  .rst(rst),
 	  .en_n(1'b0),
-	  .dataIn({PC_plus4 + 4, wb_out}),
-	  .sel(jal),
+	  .dataIn({wb_PC_plus4, wb_out}),
+	  .sel(wb_jal),
 	  .dataOut(id_regWriteData)
 	);
 
@@ -519,7 +558,7 @@ wire [1:0] df_forwardA, df_forwardB;
 		.funct(ex_funct),
 		.ALUop(ex_ALUop),
 		.ALUfunct(ex_ALUfunct),
-		.jr(jr)
+		.jr(ex_jr)
 	);
 
 	mux #(
@@ -609,7 +648,7 @@ wire [1:0] df_forwardA, df_forwardB;
  );
 
  delay #(
-	.BIT_WIDTH(4),
+	.BIT_WIDTH(5),
 	.DEPTH(1),
 	.DELAY(2),
 	.ARCH_SEL(0)
@@ -617,16 +656,15 @@ wire [1:0] df_forwardA, df_forwardB;
 	.clk(clk),
 	.rst(rst),
 	.en_n(1'b0),
-	.dataIn({memWrite, memIsSigned, memDataSize}),
-	.dataOut({mem_memWrite, mem_memIsSigned, mem_memDataSize})
+	.dataIn({memWrite, memIsSigned, memDataSize, regWrite}),
+	.dataOut({mem_memWrite, mem_memIsSigned, mem_memDataSize, mem_regWrite})
  );
 
  /**********
  * Memory
  **********/
-
  	dataRAM U_DATA_MEMORY(
-		.clk(~clk_mem),
+		.clk(clk_mem),
 		.data(mem_regData),
 		.addr(mem_ALUDataOut[7:0]),
 		.wren(mem_memWrite),
@@ -666,7 +704,7 @@ wire [1:0] df_forwardA, df_forwardB;
  );
 
  delay #(
- .BIT_WIDTH(2),
+ .BIT_WIDTH(3),
  .DEPTH(1),
  .DELAY(3),
  .ARCH_SEL(0)
@@ -674,8 +712,21 @@ wire [1:0] df_forwardA, df_forwardB;
  .clk(clk),
  .rst(rst),
  .en_n(1'b0),
- .dataIn({memToReg, regWrite}),
- .dataOut({wb_memToReg, wb_regWrite})
+ .dataIn({memToReg, regWrite, jal}),
+ .dataOut({wb_memToReg, wb_regWrite, wb_jal})
+ );
+
+ delay #(
+	.BIT_WIDTH(BIT_WIDTH),
+	.DEPTH(1),
+	.DELAY(4),
+	.ARCH_SEL(0)
+ )U_IF_WB_PC_DELAY(
+	.clk(clk),
+	.rst(rst),
+	.en_n(1'b0),
+	.dataIn(PC_plus4),
+	.dataOut(wb_PC_plus4)
  );
 
  /**********
