@@ -9,7 +9,7 @@ TODO
 
 module data_forwarding_unit #(
 	parameter BIT_WIDTH = 32,
-	parameter REG_ADDR_WIDTH = 5;
+	parameter REG_ADDR_WIDTH = 5,
 	parameter DELAY = 0,
 	parameter ARCH_SEL = 0
 )(

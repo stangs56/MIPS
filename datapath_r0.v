@@ -138,7 +138,7 @@ wire [1:0] df_forwardA, df_forwardB;
 	//registers
 	wire [BIT_WIDTH-1:0] ex_readData [1:0];
 	wire [REG_ADDR_WIDTH-1:0] ex_regToWrite;
-	wire [REG_ADDR_WIDTH-1:0] ex_rs, ex_rt
+	wire [REG_ADDR_WIDTH-1:0] ex_rs, ex_rt;
 
   //control
   wire [FUNCT_WIDTH-1:0] ex_funct;
@@ -591,7 +591,7 @@ wire [1:0] df_forwardA, df_forwardB;
 	.clk(clk),
 	.rst(rst),
 	.en_n(1'b0),
-	.dataIn(ex_readData[1]),
+	.dataIn(ex_alu_in_df),
 	.dataOut(mem_regData)
  );
 

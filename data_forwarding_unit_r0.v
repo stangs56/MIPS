@@ -9,7 +9,7 @@ TODO
 
 module data_forwarding_unit_r0 #(
 	parameter BIT_WIDTH = 32,
-	parameter REG_ADDR_WIDTH = 5;
+	parameter REG_ADDR_WIDTH = 5,
 	parameter DELAY = 0
 )(
 	input clk,
