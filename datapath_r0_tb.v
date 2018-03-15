@@ -15,7 +15,7 @@ Defines
 `define DELAY(TIME_CLK) #(10*TIME_CLK); //delays one clk cycle, TIME_CLK = number of clk cycles to delay
 
 /**********
-*  Array Packing Defines 
+*  Array Packing Defines
 **********/
 //These are preprocessor defines similar to C/C++ preprocessor or VHDL functions
 	`define PACK_ARRAY(PK_WIDTH,PK_DEPTH,PK_SRC,PK_DEST, BLOCK_ID, GEN_VAR)    genvar GEN_VAR; generate for (GEN_VAR=0; GEN_VAR<(PK_DEPTH); GEN_VAR=GEN_VAR+1) begin: BLOCK_ID assign PK_DEST[((PK_WIDTH)*GEN_VAR+((PK_WIDTH)-1)):((PK_WIDTH)*GEN_VAR)] = PK_SRC[GEN_VAR][((PK_WIDTH)-1):0]; end endgenerate
@@ -53,13 +53,13 @@ reg simState = 0;
 
 
 /**********
- * Glue Logic 
+ * Glue Logic
  **********/
- 
+
 /**********
  * Synchronous Logic
  **********/
-always begin 
+always begin
 	if (simState != 1) begin
 		`DELAY(1/2)
 		clk = ~clk;
@@ -69,31 +69,31 @@ end
 initial begin
   //SIM
   simState = 0;
-  
-	
+
+
   //Start Sim, initialize all inputs
   $display($time, "- Starting Sim");
   clk = 0;
   rst = 1;
   rst_clk = 1;
-  `DELAY(10)
-  
+  `DELAY(2)
+
   rst_clk = 0;
-  `DELAY(10)
-	
-  //leaving reset 
+  `DELAY(2)
+
+  //leaving reset
   $display($time, "- Leaving Reset");
   rst = 0;
-  `DELAY(1000)
-  
-  
-	
+  `DELAY(100)
+
+
+
 	//End Simulation
 	$display($time, "- End Simulation");
 	simState = 1;
 end
 /**********
- * Glue Logic 
+ * Glue Logic
  **********/
 /**********
  * Components
