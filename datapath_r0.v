@@ -86,6 +86,7 @@ wire [1:0] df_forwardA, df_forwardB;
  **********/
 
 	//PC
+	wire [ADDR_WIDTH-1:0] if_pc_addConst;
 	wire [ADDR_WIDTH-1:0] PC_out;
 	wire [ADDR_WIDTH-1:0] PC_in;
 	wire [ADDR_WIDTH-1:0] PC_plus4;
@@ -98,6 +99,8 @@ wire [1:0] df_forwardA, df_forwardB;
  * Decode
  **********/
 
+ //flush
+  wire IDFlush;
 
  wire [ADDR_WIDTH-1:0] id_PC_out;
  //Branch
@@ -307,6 +310,20 @@ wire [1:0] df_forwardA, df_forwardB;
 		.dataOut(PC_out)
 	);
 
+	mux #(
+ 	 .BIT_WIDTH(BIT_WIDTH),
+ 	 .DEPTH(2),
+ 	 .ARCH_SEL(0)
+  )U_PC_HOLD(
+ 	 .clk(clk_sys),
+ 	 .rst(rst),
+ 	 .en_n(1'b0),
+ 	 .dataIn({32'h0, 32'h4}),
+	 //check if instruction that requires a delay slot
+ 	 .sel(jump || jal || branch || jr),
+ 	 .dataOut(if_pc_addConst)
+  );
+
    adder #(
 		.BIT_WIDTH(BIT_WIDTH),
 		.DELAY(DELAY),
@@ -315,7 +332,7 @@ wire [1:0] df_forwardA, df_forwardB;
 		.clk(clk_sys),
 		.rst(rst),
 		.inA(PC_out),
-		.inB(4),
+		.inB(if_pc_addConst),
 		.out({PC_plus4_ovf, PC_plus4})
 	);
 
@@ -344,8 +361,6 @@ wire [1:0] df_forwardA, df_forwardB;
  /**********
  * IF/ID
  **********/
-
- wire IDFlush;
 
  delay #(
 	 .BIT_WIDTH(1),
@@ -600,12 +615,14 @@ wire [1:0] df_forwardA, df_forwardB;
 	  .dataOut(ex_ALUDataIn[1])
 	);
 
+  wire [BIT_WIDTH-1:0] ex_ALUDataOut;
+
 	 alu #(
 		.DATA_WIDTH(BIT_WIDTH),
 		.CTRL_WIDTH(ALUFUNCT_WIDTH),
 		.STATUS_WIDTH(STATUS_WIDTH),
 		.SHAMT_WIDTH(SHAMT_WIDTH),
-		.DELAY(1),
+		.DELAY(0),
 		.ARCH_SEL(0)
 	)U_ALU(
 		.clk(clk_sys),
@@ -613,7 +630,7 @@ wire [1:0] df_forwardA, df_forwardB;
 		.dataIn(ex_ALUDataIn_tmp),
 		.ctrl(ex_ALUfunct),
 		.shamt(ex_shamt),
-		.dataOut(mem_ALUDataOut),
+		.dataOut(ex_ALUDataOut),
 		.status(mem_status)
 	);
 
@@ -623,15 +640,15 @@ wire [1:0] df_forwardA, df_forwardB;
 
  delay #(
 	.BIT_WIDTH(BIT_WIDTH),
-	.DEPTH(1),
+	.DEPTH(2),
 	.DELAY(1),
 	.ARCH_SEL(0)
  )U_EX_MEM_REG_DATA_DELAY(
 	.clk(clk),
 	.rst(rst),
 	.en_n(1'b0),
-	.dataIn(ex_alu_in_df),
-	.dataOut(mem_regData)
+	.dataIn({ex_alu_in_df, ex_ALUDataOut}),
+	.dataOut({mem_regData, mem_ALUDataOut})
  );
 
  delay #(
@@ -648,7 +665,20 @@ wire [1:0] df_forwardA, df_forwardB;
  );
 
  delay #(
-	.BIT_WIDTH(5),
+  .BIT_WIDTH(2),
+  .DEPTH(1),
+  .DELAY(2),
+  .ARCH_SEL(0)
+ )U_ID_MEM_WRITE_DELAY(
+  .clk(clk),
+  .rst(rst),
+  .en_n(1'b0),
+  .dataIn({memWrite, regWrite}),
+  .dataOut({mem_memWrite, mem_regWrite})
+ );
+
+ delay #(
+	.BIT_WIDTH(3),
 	.DEPTH(1),
 	.DELAY(2),
 	.ARCH_SEL(0)
@@ -656,8 +686,8 @@ wire [1:0] df_forwardA, df_forwardB;
 	.clk(clk),
 	.rst(rst),
 	.en_n(1'b0),
-	.dataIn({memWrite, memIsSigned, memDataSize, regWrite}),
-	.dataOut({mem_memWrite, mem_memIsSigned, mem_memDataSize, mem_regWrite})
+	.dataIn({memIsSigned, memDataSize}),
+	.dataOut({mem_memIsSigned, mem_memDataSize})
  );
 
  /**********
@@ -680,13 +710,13 @@ wire [1:0] df_forwardA, df_forwardB;
  delay #(
 	.BIT_WIDTH(BIT_WIDTH),
 	.DEPTH(1),
-	.DELAY(1),
+	.DELAY(2),
 	.ARCH_SEL(0)
  )U_MEM_WB_ALUOUT_DELAY(
 	.clk(clk),
 	.rst(rst),
 	.en_n(1'b0),
-	.dataIn(mem_ALUDataOut),
+	.dataIn(ex_ALUDataOut),
 	.dataOut(wb_ALUDataOut)
  );
 

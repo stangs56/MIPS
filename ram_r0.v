@@ -15,7 +15,7 @@ module ram_r0 #(
 	input  [BIT_WIDTH-1:0] data,
 	input  [5:0] addr,
 	input  wren,
-	
+
 	output reg [BIT_WIDTH-1:0] q
 );
 
@@ -25,9 +25,9 @@ module ram_r0 #(
  reg [BIT_WIDTH-1:0] dataReg [63:0];
 
 /**********
- * Glue Logic 
+ * Glue Logic
  **********/
- 
+
 /**********
  * Synchronous Logic
  **********/
@@ -37,20 +37,20 @@ module ram_r0 #(
 	end
 	q <= dataReg[addr];
  end
- 
+
 /**********
- * Glue Logic 
+ * Glue Logic
  **********/
 /**********
  * Components
  **********/
 
- 
+
 /**********
  * Output Combinatorial Logic
  **********/
- 
+
  //output selection
 
- 
+
 endmodule
