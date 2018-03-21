@@ -84,7 +84,7 @@ initial begin
   //leaving reset
   $display($time, "- Leaving Reset");
   rst = 0;
-  `DELAY(100)
+  `DELAY(110)
 
 
 

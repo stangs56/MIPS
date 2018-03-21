@@ -37,6 +37,7 @@ reg  [15:0] out_half;
 
 reg read_isSigned;
 reg [1:0] read_dataSize;
+reg [7:0] read_addr;
 
 /**********
  * Glue Logic
@@ -65,6 +66,7 @@ reg [1:0] read_dataSize;
 always @(posedge clk) begin
 	read_isSigned <= isSigned;
 	read_dataSize <= dataSize;
+	read_addr     <= addr;
 end
 
 /**********
@@ -80,19 +82,19 @@ always @* begin
 
 	case(dataSize)
 		2'b10, 2'b11 : begin //word
-			d3 <= data[7:0];
-			d2 <= data[15:8];
-			d1 <= data[23:16];
-			d0 <= data[31:24];
+			d0 <= data[7:0];
+			d1 <= data[15:8];
+			d2 <= data[23:16];
+			d3 <= data[31:24];
 		end
 
 		2'b01 : begin //half
 			if(addr[1]) begin
-				d3 <= data[7:0];
-				d2 <= data[15:8];
+				d2 <= data[7:0];
+				d3 <= data[15:8];
 			end else begin
-				d1 <= data[7:0];
-				d0 <= data[15:8];
+				d0 <= data[7:0];
+				d1 <= data[15:8];
 			end
 		end
 
@@ -146,20 +148,20 @@ end
 /**********
  * Output Combinatorial Logic
  **********/
- assign out_word = {q0, q1, q2, q3};
- assign out_half0 = {q0, q1};
- assign out_half1 = {q2, q3};
+ assign out_word = {q3, q2, q1, q0};
+ assign out_half0 = {q1, q0};
+ assign out_half1 = {q3, q2};
 
  //output selection
  always @* begin
-	case(addr[1:0])
-		2'b00 : out_byte <= q3;
-		2'b01 : out_byte <= q2;
-		2'b10 : out_byte <= q1;
-		2'b11 : out_byte <= q0;
+	case(read_addr[1:0])
+		2'b00 : out_byte <= q0;
+		2'b01 : out_byte <= q1;
+		2'b10 : out_byte <= q2;
+		2'b11 : out_byte <= q3;
 	endcase
 
-	if(addr[1]) begin
+	if(read_addr[1]) begin
 		out_half <= out_half1;
 	end else begin
 		out_half <= out_half0;
