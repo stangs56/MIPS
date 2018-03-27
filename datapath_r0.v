@@ -76,6 +76,14 @@ module datapath_r0 #(
 	wire branchTaken;
 
 	/**********
+	 * Hazard Detection
+	 **********/
+
+  wire PC_write;
+	wire IDIF_write;
+	wire ex_noop;
+
+	/**********
 	 * Data Forwarding
 	 **********/
 
@@ -158,6 +166,7 @@ wire [1:0] df_forwardA, df_forwardB;
 	wire [BIT_WIDTH-1:0] ex_imm_extended;
 
 	wire ex_jr;
+	wire ex_memRead;
 
 /**********
  * Memory
@@ -238,6 +247,29 @@ wire [1:0] df_forwardA, df_forwardB;
 /**********
  * Components
  **********/
+
+ /**********
+	* Hazard Detection
+	**********/
+
+ hazard_detection_unit #(
+	 .BIT_WIDTH(BIT_WIDTH),
+	 .REG_ADDR_WIDTH(REG_ADDR_WIDTH),
+	 .DELAY(DELAY)
+ )U_HAZARD_DECTION(
+	 .clk(clk),
+	 .rst(rst),
+	 .rs(id_rs),
+	 .rt(id_rt),
+
+	 .ex_memRead(ex_memRead),
+	 .ex_rt(ex_rt),
+
+	 .PC_write(PC_write),
+	 .IDIF_write(IDIF_write),
+	 .ex_noop(ex_noop)
+ );
+
  /**********
   * Data Fowarding
   **********/
@@ -320,7 +352,7 @@ wire [1:0] df_forwardA, df_forwardB;
  	 .en_n(1'b0),
  	 .dataIn({32'h0, 32'h4}),
 	 //check if instruction that requires a delay slot
- 	 .sel(jump || jal || branch || jr),
+ 	 .sel(jump || jal || branchTaken || jr),
  	 .dataOut(if_pc_addConst)
   );
 
@@ -371,7 +403,7 @@ wire [1:0] df_forwardA, df_forwardB;
 	 .clk(clk),
 	 .rst(rst),
 	 .en_n(1'b0),
-	 .dataIn(jump || jal || branch || jr),
+	 .dataIn(jump || jal || branchTaken || jr),
 	 .dataOut(IDFlush)
  );
 
@@ -517,7 +549,7 @@ wire [1:0] df_forwardA, df_forwardB;
  **********/
 
  delay #(
-	 .BIT_WIDTH(ALUOP_WIDTH + FUNCT_WIDTH + SHAMT_WIDTH + 1),
+	 .BIT_WIDTH(ALUOP_WIDTH + FUNCT_WIDTH + SHAMT_WIDTH + 2),
 	 .DEPTH(1),
 	 .DELAY(1),
 	 .ARCH_SEL(0)
@@ -525,8 +557,8 @@ wire [1:0] df_forwardA, df_forwardB;
 	 .clk(clk),
 	 .rst(rst),
 	 .en_n(1'b0),
-	 .dataIn({id_funct, id_shamt, ALUop, ALUsrc}),
-	 .dataOut({ex_funct, ex_shamt, ex_ALUop, ex_ALUsrc})
+	 .dataIn({id_funct, id_shamt, ALUop, ALUsrc, memRead}),
+	 .dataOut({ex_funct, ex_shamt, ex_ALUop, ex_ALUsrc, ex_memRead})
  );
 
  delay #(
