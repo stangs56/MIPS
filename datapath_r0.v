@@ -352,7 +352,7 @@ wire [1:0] df_forwardA, df_forwardB;
  	 .en_n(1'b0),
  	 .dataIn({32'h0, 32'h4}),
 	 //check if instruction that requires a delay slot
- 	 .sel(jump || jal || branchTaken || jr),
+ 	 .sel(jump || jal || branchTaken || jr || !PC_write),
  	 .dataOut(if_pc_addConst)
   );
 
@@ -394,8 +394,10 @@ wire [1:0] df_forwardA, df_forwardB;
  * IF/ID
  **********/
 
+ wire [BIT_WIDTH-1:0] IFID_hold;
+
  delay #(
-	 .BIT_WIDTH(1),
+	 .BIT_WIDTH(BIT_WIDTH + 1),
 	 .DEPTH(1),
 	 .DELAY(1),
 	 .ARCH_SEL(0)
@@ -403,20 +405,20 @@ wire [1:0] df_forwardA, df_forwardB;
 	 .clk(clk),
 	 .rst(rst),
 	 .en_n(1'b0),
-	 .dataIn(jump || jal || branchTaken || jr),
-	 .dataOut(IDFlush)
+	 .dataIn({progMemOut , jump || jal || branchTaken || jr}),
+	 .dataOut({IFID_hold, IDFlush})
  );
 
  mux #(
 	.BIT_WIDTH(BIT_WIDTH),
-	.DEPTH(2),
+	.DEPTH(4),
 	.ARCH_SEL(0)
  )U_INSTRUCTION_FORCE_RST(
 	.clk(clk_sys),
 	.rst(rst),
 	.en_n(1'b0),
-	.dataIn({{BIT_WIDTH{1'b0}}, progMemOut}),
-	.sel(IDFlush),
+	.dataIn({IFID_hold, IFID_hold, {BIT_WIDTH{1'b0}}, progMemOut}),
+	.sel({!IDIF_write, IDFlush}),
 	.dataOut(id_instruction)
  );
 
@@ -468,6 +470,23 @@ wire [1:0] df_forwardA, df_forwardB;
 		.memDataSize(memDataSize),
 
 		.combined(combined)
+	);
+
+	//clear regwrite to eliminate side effects from load use
+	//hazard correction
+	wire id_regWrite;
+
+	mux #(
+		.BIT_WIDTH(1),
+		.DEPTH(2),
+		.ARCH_SEL(0)
+	)U_EX_NOOP_MUX(
+		.clk(clk_sys),
+		.rst(rst),
+		.en_n(1'b0),
+		.dataIn({1'b0, regWrite}),
+		.sel(ex_noop),
+		.dataOut(id_regWrite)
 	);
 
   //register file stuff
@@ -705,7 +724,7 @@ wire [1:0] df_forwardA, df_forwardB;
   .clk(clk),
   .rst(rst),
   .en_n(1'b0),
-  .dataIn({memWrite, regWrite}),
+  .dataIn({memWrite, id_regWrite}),
   .dataOut({mem_memWrite, mem_regWrite})
  );
 
@@ -774,7 +793,7 @@ wire [1:0] df_forwardA, df_forwardB;
  .clk(clk),
  .rst(rst),
  .en_n(1'b0),
- .dataIn({memToReg, regWrite, jal}),
+ .dataIn({memToReg, id_regWrite, jal}),
  .dataOut({wb_memToReg, wb_regWrite, wb_jal})
  );
 

@@ -21,14 +21,15 @@ module hazard_detection_unit_r0 #(
 	input ex_memRead,
 	input [REG_ADDR_WIDTH-1:0] ex_rt,
 
-	output PC_write,
-  output IDIF_write,
-  output ex_noop
+	output reg PC_write,
+  output reg IDIF_write,
+  output reg ex_noop
   );
 
 /**********
  * Internal Signals
 **********/
+reg IDIF_write_tmp;
 /**********
  * Glue Logic
  **********/
@@ -36,6 +37,20 @@ module hazard_detection_unit_r0 #(
  * Synchronous Logic
  **********/
 always @* begin
+	ex_noop <= 1'b0;
+	PC_write <= 1'b1;
+	IDIF_write_tmp <= 1'b1;
+
+	//load use hazard
+	if(ex_memRead && (ex_rt == rs || ex_rt == rt)) begin
+		ex_noop <= 1'b1;
+		PC_write <= 1'b0;
+		IDIF_write_tmp <= 1'b0;
+	end
+end
+
+always @(posedge clk) begin
+	IDIF_write <= IDIF_write_tmp;
 
 end
 
