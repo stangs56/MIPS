@@ -19,7 +19,7 @@ module branch_prediction_unit #(
 
   input [ADDR_WIDTH-1:0] updateAddr,
   input branchTaken,
-  input update;
+  input update,
 
   output prediction );
 

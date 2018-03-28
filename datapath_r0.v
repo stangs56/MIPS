@@ -249,6 +249,23 @@ wire [1:0] df_forwardA, df_forwardB;
  **********/
 
  /**********
+	* Branch Prediction
+	**********/
+	wire prediction;
+
+	branch_prediction_unit #(
+		.DELAY(DELAY)
+	)U_BRANCH_PREDICTION(
+		.clk(clk),
+		.rst(rst),
+		.predictAddr(id_PC_out[5:0]),
+		.updateAddr(id_PC_out[5:0]),
+		.branchTaken(branchTaken),
+		.update(branch),
+		.prediction(prediction)
+	);
+
+ /**********
 	* Hazard Detection
 	**********/
 

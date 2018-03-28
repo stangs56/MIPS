@@ -41,7 +41,7 @@ always @(posedge clk) begin
 
   if(rst) begin
     for(i = 0; i < 2**ADDR_WIDTH; i = i+1) begin
-      predictionHistory[i] <= 2'b00;
+      predictionHistory[i] <= 2'b01;
     end
   end else if(update) begin
     case(predictionHistory[updateAddr])
