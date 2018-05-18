@@ -79,7 +79,7 @@ module datapath_r0 #(
 * Hazard Detection
 **********/
 
-  wire PC_write;
+	wire PC_write;
 	wire IDIF_write;
 	wire ex_noop;
 
